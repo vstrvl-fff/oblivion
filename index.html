@@ -1,7 +1,1057 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="UTF-8"><!DOCTYPE html>
+<html lang="en">
+<head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OBLIVION</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=MedievalSharp&family=UnifrakturMaguntia&family=Pixelify+Sans&family=Jacquard+24&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#020202;overflow:hidden;font-family:'VT323',monospace;cursor:none}
+canvas{display:block}
+#noise-canvas{position:fixed;inset:0;z-index:1;width:100%;height:100%;opacity:.13;pointer-events:none}
+#trail-canvas{position:fixed;inset:0;z-index:9998;pointer-events:none}
+.scanline{position:fixed;inset:0;z-index:2;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.05) 3px,rgba(0,0,0,.05) 4px)}
+#cursor{position:fixed;z-index:9999;pointer-events:none;width:14px;height:23px;left:-100px;top:-100px}
+
+/* ── LANDING ── */
+#landing{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+#pc-icon{display:flex;flex-direction:column;align-items:center;gap:6px;animation:float 3s ease-in-out infinite;cursor:none}
+#pc-icon svg{image-rendering:pixelated;filter:drop-shadow(0 0 18px rgba(0,0,220,.5))}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── DISINTEGRATION ── */
+#dis{position:fixed;inset:0;z-index:20;pointer-events:none;display:none}
+
+/* ── COLLECTION ── */
+#col{position:fixed;inset:0;z-index:5;display:none;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#111 #020202}
+#col::-webkit-scrollbar{width:3px}
+#col::-webkit-scrollbar-track{background:#020202}
+#col::-webkit-scrollbar-thumb{background:#0f0f0f}
+.col-inner{max-width:1080px;margin:0 auto;padding:12px 24px 10px}
+.col-logo{display:flex;justify-content:center;margin-bottom:8px;}
+.col-desc{font-family:'Pixelify Sans',monospace;font-size:11px;letter-spacing:.22em;color:#cc0000;text-align:center;text-transform:lowercase;margin-bottom:10px}
+.col-inner{font-family:'UnifrakturMaguntia',cursive}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;max-height:calc(100vh - 130px)}.card{max-height:calc((100vh - 134px)/2)}
+.card,.card *{cursor:none!important}
+.card{position:relative;aspect-ratio:1;background:#050505;border:1px solid #0e0e0e;overflow:hidden}
+iframe{cursor:none!important;pointer-events:none}
+.card:hover{border-color:#222}
+.card:hover .ov{opacity:1}
+.frame{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}.frame iframe{width:100%;height:100%;border:none;display:block}
+.frame img{width:100%;height:100%;object-fit:contain;display:block}
+.loading{font-size:11px;color:#1c1c1c;animation:blink .75s step-end infinite;letter-spacing:2px;font-family:'Share Tech Mono',monospace;text-align:center;padding:4px}
+.ov{position:absolute;inset:0;top:auto;background:linear-gradient(transparent,rgba(0,0,0,.93) 55%);padding:44px 14px 14px;opacity:0;transition:opacity .25s;pointer-events:none}
+.pname{display:block;font-size:26px;color:#888;font-family:'Jacquard 24',cursive;letter-spacing:.12em;image-rendering:pixelated;-webkit-font-smoothing:none;font-smooth:never}
+.pdesc{font-family:'Share Tech Mono',monospace;font-size:9px;color:#2e2e2e;margin-top:3px}
+.plinks{display:flex;gap:6px;margin-top:8px}
+.plink{font-family:'Share Tech Mono',monospace;font-size:9px;color:#1e1e1e;text-decoration:none;border:1px solid #161616;padding:2px 8px;transition:all .2s;white-space:nowrap}
+.plink:hover{color:#555;border-color:#2a2a2a}
+.plink{pointer-events:auto!important}
+.tba{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;font-size:20px;color:#0e0e0e;text-align:center;letter-spacing:3px;font-family:'UnifrakturMaguntia',cursive}
+
+/* ── DETAIL PAGE ── */
+#detail{position:fixed;inset:0;z-index:100;display:none;opacity:0;background:#020202}
+.det-layout{display:grid;grid-template-columns:1fr 360px;width:100%;height:100%;background:#020202}
+.det-viewer{position:relative;background:#050505;border-right:1px solid #0c0c0c;display:flex;align-items:center;justify-content:center;overflow:hidden;width:100%;height:100%}
+#det-iframe-wrap{position:relative;width:min(calc(100vw - 360px - 40px), calc(100vh - 40px));height:min(calc(100vw - 360px - 40px), calc(100vh - 40px));flex-shrink:0;overflow:hidden}
+#det-iframe{position:absolute;inset:0;width:100%;height:100%;border:none;transform:translate(0px,0px) scale(1);transform-origin:center center;pointer-events:none}
+.det-zbar-sb{display:flex;align-items:center;gap:10px;margin-bottom:20px;padding:5px 0}
+.det-zbar-sb label,.det-zbar-sb span{font-family:'Pixelify Sans',monospace;font-size:11px;color:#444;letter-spacing:2px}
+.det-zbar-sb span{min-width:36px}
+.det-zbar-sb input{-webkit-appearance:none;flex:1;height:2px;background:#1c1c1c;outline:none;border:none;cursor:none}
+.det-zbar-sb input::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;background:#444;cursor:none}
+.det-zbar{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;z-index:10;background:rgba(2,2,2,.9);padding:5px 14px;border:1px solid #111}
+.det-zbar label,.det-zbar span{font-family:'Pixelify Sans',monospace;font-size:11px;color:#444;letter-spacing:2px}
+.det-zbar span{min-width:32px}
+.det-zbar input{-webkit-appearance:none;width:100px;height:2px;background:#1c1c1c;outline:none;border:none;cursor:none}
+.det-zbar input::-webkit-slider-thumb{-webkit-appearance:none;width:8px;height:14px;background:#2a2a2a;cursor:none}
+.det-sb{display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:none;padding:28px 22px 40px;background:#020202}
+.det-sb::-webkit-scrollbar{display:none}
+.det-back{font-family:'Pixelify Sans',monospace;font-size:13px;color:#666;letter-spacing:3px;background:none;border:none;text-align:left;padding:0 0 20px;text-transform:lowercase;cursor:none;transition:color .2s;display:block;width:100%}
+.det-back:hover{color:#3a3a3a}
+.det-name{font-family:'Pixelify Sans',monospace;font-size:34px;color:#999;line-height:1.15;margin-bottom:16px;text-transform:lowercase}
+.det-sec{font-family:'Pixelify Sans',monospace;font-size:10px;color:#444;letter-spacing:3px;margin:16px 0 5px;text-transform:lowercase}
+.det-desc{font-family:'Pixelify Sans',monospace;font-size:13px;color:#666;line-height:1.7;text-transform:lowercase}
+.det-meta{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#0a0a0a;border:1px solid #0a0a0a}
+.det-mc{background:#040404;padding:8px 10px}
+.det-mk{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:2px;text-transform:lowercase;margin-bottom:2px}
+.det-mv{font-family:'Pixelify Sans',monospace;font-size:11px;color:#666;letter-spacing:1px;text-transform:lowercase;word-break:break-all}
+.det-addr{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:1px;word-break:break-all;line-height:1.7;padding:8px 10px;background:#040404;border:1px solid #0a0a0a;margin-top:4px;text-transform:lowercase}
+.det-links{display:flex;gap:4px;margin-top:14px}
+.det-lnk{flex:1;text-align:center;text-decoration:none;font-family:'Pixelify Sans',monospace;font-size:11px;color:#555;letter-spacing:2px;border:1px solid #222;padding:7px 4px;text-transform:lowercase;transition:all .2s}
+.det-lnk:hover{color:#333;border-color:#1c1c1c}
+.det-bid{border:1px solid #0d0d0d;background:#040404;padding:13px;margin-top:14px}
+.det-bid-t{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:3px;margin-bottom:10px;text-transform:lowercase}
+.det-bid-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.bk{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:2px;text-transform:lowercase}
+.bv{font-family:'Pixelify Sans',monospace;font-size:15px;color:#666}
+.det-bid-note{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:2px;margin-top:8px;line-height:1.8;text-transform:lowercase}
+.det-hist-t{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:2px;margin:10px 0 5px;padding-top:10px;border-top:1px solid #0a0a0a;text-transform:lowercase}
+.det-hist-e{font-family:'Pixelify Sans',monospace;font-size:9px;color:#444;letter-spacing:2px;text-transform:lowercase}
+#vstrvl-credit{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  font-family:'Pixelify Sans',monospace;font-size:11px;
+  color:#444;letter-spacing:4px;text-transform:lowercase;
+  z-index:15;white-space:nowrap;pointer-events:none;
+}
+
+  .card { max-width:100%; }
+  .pname { font-size:20px; }
+}
+
+/* ══════════════════════════════════════════════
+   MOBILE — touch devices & narrow screens
+   ══════════════════════════════════════════════ */
+
+/* Hide cursor on touch — detect via pointer:coarse */
+@media (pointer:coarse) {
+  #cursor { display:none!important; }
+}
+
+/* ── TABLET: 2-col grid ── */
+@media (max-width:900px) {
+  .grid {
+    grid-template-columns: repeat(2,1fr);
+    max-height:none;
+  }
+  .card { max-height:none; }
+  .det-layout {
+    grid-template-columns:1fr;
+    grid-template-rows:auto 1fr;
+  }
+  .det-viewer {
+    width:100%;
+    height:auto;
+    aspect-ratio:1;
+    border-right:none;
+    border-bottom:1px solid #0c0c0c;
+  }
+  #det-iframe-wrap {
+    width:90%!important;
+    height:auto!important;
+    aspect-ratio:1;
+  }
+  .det-sb { padding:24px 20px 60px; }
+}
+
+/* ── PHONE: single col, full flow ── */
+@media (max-width:600px) {
+
+  /* scrolling */
+  html,body { overflow-x:hidden; }
+  #col {
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* landing */
+  #pc-icon svg { width:72px!important; height:72px!important; }
+  #vstrvl-credit { font-size:10px; letter-spacing:3px; bottom:16px; }
+
+  /* collection header */
+  .col-inner { padding:20px 12px 60px; }
+  .col-logo svg { max-height:36px!important; width:auto!important; }
+  .col-desc { font-size:10px; letter-spacing:.12em; margin-bottom:24px; }
+
+  /* single column grid, artwork fills screen width with padding */
+  .grid {
+    grid-template-columns: 1fr;
+    gap:12px;
+    padding:0 12px;
+    max-height:none;
+  }
+
+  /* card: full width square with side padding already from grid */
+  .card {
+    aspect-ratio:1;
+    max-height:none;
+    width:100%;
+  }
+
+  /* overlay text */
+  .pname { font-size:20px; }
+  .pdesc { font-size:9px; }
+  .plinks { flex-direction:row; gap:4px; flex-wrap:wrap; }
+  .plink  { font-size:9px; padding:3px 8px; }
+
+  /* ── detail page ── */
+  #detail { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+  .det-layout {
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto;
+    height:auto;
+    min-height:100vh;
+  }
+
+  /* artwork square: full screen width, square */
+  .det-viewer {
+    width:100%;
+    height:auto;
+    aspect-ratio:1;
+    border-right:none;
+    border-bottom:1px solid #0c0c0c;
+    flex-shrink:0;
+  }
+
+  /* square wrapper fills viewer */
+  #det-iframe-wrap {
+    width:calc(100vw - 32px)!important;
+    height:calc(100vw - 32px)!important;
+  }
+
+  /* details scroll below */
+  .det-sb {
+    padding:20px 16px 60px;
+    height:auto;
+    overflow:visible;
+  }
+
+  /* zoom bar */
+  .det-zbar-sb {
+    margin-bottom:14px;
+  }
+  .det-zbar-sb input { flex:1; min-width:0; }
+
+  /* text sizes */
+  .det-name  { font-size:26px; }
+  .det-sec   { font-size:9px; }
+  .det-desc  { font-size:12px; }
+  .det-mk    { font-size:8px; }
+  .det-mv    { font-size:10px; }
+  .det-addr  { font-size:8px; }
+  .bk        { font-size:8px; }
+  .bv        { font-size:14px; }
+
+  /* meta grid: keep 2 col */
+  .det-meta { grid-template-columns:1fr 1fr; }
+
+  /* links */
+  .det-links { gap:6px; }
+  .det-lnk   { font-size:10px; padding:8px; }
+
+  /* back button */
+  .det-back  { font-size:12px; padding-bottom:16px; }
+}
+
+/* ── MANIFOLD WIDGET OVERRIDES ── */
+.m-layout-complete-listing{
+  background:transparent!important;
+  font-family:'Pixelify Sans',monospace!important;
+}
+.m-layout-complete-listing *{
+  font-family:'Pixelify Sans',monospace!important;
+  color:#555!important;
+  background:transparent!important;
+  border-color:#111!important;
+}
+.m-layout-complete-listing button{
+  background:#0a0a0a!important;
+  color:#555!important;
+  border:1px solid #1e1e1e!important;
+  font-family:'Pixelify Sans',monospace!important;
+  letter-spacing:2px!important;
+  text-transform:lowercase!important;
+  cursor:none!important;
+}
+.m-layout-complete-listing button:hover{
+  background:#111!important;
+  color:#888!important;
+  border-color:#2a2a2a!important;
+}
+#det-manifold-widget{
+  margin-top:14px;
+  border:1px solid #0d0d0d;
+  background:#040404;
+  padding:14px;
+  min-height:60px;
+}
+#det-listing-none{
+  font-family:'Pixelify Sans',monospace;
+  font-size:9px;color:#2a2a2a;
+  letter-spacing:3px;text-transform:lowercase;
+  padding:14px;border:1px solid #0d0d0d;
+  background:#040404;margin-top:14px;
+}
+
+/* ── WALLET CONNECT ── */
+#wallet-bar{
+  position:fixed;top:14px;right:18px;z-index:300;
+  display:flex;align-items:center;gap:8px;
+}
+/* Manifold connect widget override */
+#wallet-bar m-connect,
+#wallet-bar [data-widget="m-connect"]{
+  --m-connect-font-family:'Pixelify Sans',monospace;
+}
+#wallet-bar .m-connect-button,
+#wallet-bar button{
+  font-family:'Pixelify Sans',monospace!important;
+  font-size:10px!important;
+  color:#444!important;
+  background:#050505!important;
+  border:1px solid #1a1a1a!important;
+  padding:5px 12px!important;
+  letter-spacing:2px!important;
+  text-transform:lowercase!important;
+  cursor:none!important;
+  transition:all .2s!important;
+}
+#wallet-bar .m-connect-button:hover,
+#wallet-bar button:hover{
+  color:#888!important;
+  border-color:#333!important;
+}
+#wallet-connected{
+  font-family:'Pixelify Sans',monospace;
+  font-size:10px;color:#333;letter-spacing:2px;
+  background:#050505;border:1px solid #111;
+  padding:5px 12px;display:none;cursor:none;
+}
+
+/* ── BID NOW BUTTON ── */
+#det-bid-btn{
+  display:none;
+  width:100%;
+  font-family:'Pixelify Sans',monospace;
+  font-size:12px;color:#cc0000;
+  background:#050505;border:1px solid #1e0000;
+  padding:10px;letter-spacing:3px;text-transform:lowercase;
+  margin:14px 0;cursor:none;transition:all .25s;
+  text-align:center;
+}
+#det-bid-btn:hover{
+  background:#0a0000;color:#ff2222;border-color:#330000;
+}
+#det-bid-btn.active{ display:block; }
+</style>
+
+  <!-- Manifold Marketplace Widgets -->
+  <script src="https://connect.manifoldxyz.dev/latest/connect.umd.min.js"></script>
+  <link rel="stylesheet" href="https://connect.manifoldxyz.dev/latest/connect.css">
+  <script src="https://marketplace.manifoldxyz.dev/latest/marketplace.umd.min.js"></script>
+  <link rel="stylesheet" href="https://marketplace.manifoldxyz.dev/latest/marketplace.css">
+  <link rel="stylesheet" href="https://marketplace.manifoldxyz.dev/latest/marketplace.manifold-dark.css">
+</head>
+<body>
+
+
+<!-- ── WALLET BAR (all pages) ── -->
+<div id="wallet-bar">
+  <div data-widget="m-connect" data-network="1"></div>
+</div>
+
+<div class="scanline"></div>
+<canvas id="noise-canvas"></canvas>
+<canvas id="trail-canvas"></canvas>
+
+<svg id="cursor" viewBox="0 0 32 32" width="56" height="56" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <!-- TIP — hotspot at 0,0 -->
+  <rect x="0"  y="0"  width="2" height="2" fill="#ffffff"/>
+  <!-- BLADE GLINT upper edge -->
+  <rect x="2"  y="0"  width="2" height="2" fill="#ffffff" opacity="0.6"/>
+  <rect x="4"  y="2"  width="2" height="2" fill="#eeeeee" opacity="0.45"/>
+  <rect x="6"  y="4"  width="2" height="2" fill="#dddddd" opacity="0.35"/>
+  <!-- BLADE MAIN (diagonal NW→SE) — longer blade -->
+  <rect x="2"  y="2"  width="2" height="2" fill="#e8e8e8"/>
+  <rect x="4"  y="4"  width="2" height="2" fill="#d8d8d8"/>
+  <rect x="6"  y="6"  width="2" height="2" fill="#cccccc"/>
+  <rect x="8"  y="8"  width="2" height="2" fill="#c0c0c0"/>
+  <rect x="10" y="10" width="2" height="2" fill="#b4b4b4"/>
+  <rect x="12" y="12" width="2" height="2" fill="#a8a8a8"/>
+  <rect x="14" y="14" width="2" height="2" fill="#9c9c9c"/>
+  <!-- BLADE SHADOW lower edge -->
+  <rect x="0"  y="2"  width="2" height="2" fill="#555555" opacity="0.55"/>
+  <rect x="2"  y="4"  width="2" height="2" fill="#444444" opacity="0.5"/>
+  <rect x="4"  y="6"  width="2" height="2" fill="#333333" opacity="0.45"/>
+  <rect x="6"  y="8"  width="2" height="2" fill="#2a2a2a" opacity="0.4"/>
+  <rect x="8"  y="10" width="2" height="2" fill="#222222" opacity="0.35"/>
+  <rect x="10" y="12" width="2" height="2" fill="#1a1a1a" opacity="0.3"/>
+  <rect x="12" y="14" width="2" height="2" fill="#111111" opacity="0.25"/>
+  <!-- CROSSGUARD perpendicular NE→SW -->
+  <rect x="18" y="10" width="2" height="2" fill="#aaa833"/>
+  <rect x="16" y="12" width="2" height="2" fill="#cccc44"/>
+  <rect x="14" y="14" width="2" height="2" fill="#bbbb33"/>
+  <rect x="12" y="16" width="2" height="2" fill="#cccc44"/>
+  <rect x="10" y="18" width="2" height="2" fill="#aaa833"/>
+  <!-- CROSSGUARD shadow -->
+  <rect x="18" y="12" width="2" height="2" fill="#666600" opacity="0.5"/>
+  <rect x="16" y="14" width="2" height="2" fill="#555500" opacity="0.4"/>
+  <rect x="12" y="18" width="2" height="2" fill="#555500" opacity="0.4"/>
+  <rect x="10" y="20" width="2" height="2" fill="#444400" opacity="0.3"/>
+  <!-- HANDLE wrapped leather -->
+  <rect x="16" y="16" width="2" height="2" fill="#7a4422"/>
+  <rect x="18" y="18" width="2" height="2" fill="#4e2a0f"/>
+  <rect x="16" y="18" width="2" height="2" fill="#6b3a1f"/>
+  <rect x="18" y="20" width="2" height="2" fill="#4e2a0f"/>
+  <rect x="20" y="20" width="2" height="2" fill="#7a4422"/>
+  <rect x="20" y="22" width="2" height="2" fill="#4e2a0f"/>
+  <!-- POMMEL silver cap -->
+  <rect x="20" y="24" width="2" height="2" fill="#aaaaaa"/>
+  <rect x="22" y="24" width="2" height="2" fill="#cccccc"/>
+  <rect x="20" y="26" width="2" height="2" fill="#888888"/>
+  <rect x="22" y="26" width="2" height="2" fill="#aaaaaa"/>
+  <rect x="21" y="28" width="2" height="2" fill="#666666"/>
+</svg>
+
+<!-- LANDING -->
+<div id="landing">
+  <div id="pc-icon">
+    <svg width="96" height="96" viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+      <!-- Outer bezel -->
+      <rect x="0" y="0" width="26" height="19" fill="#c0c0c0"/>
+      <!-- Win95 3D highlight edges -->
+      <line x1="0" y1="0" x2="26" y2="0" stroke="#ffffff" stroke-width="1"/>
+      <line x1="0" y1="0" x2="0" y2="19" stroke="#ffffff" stroke-width="1"/>
+      <line x1="0" y1="19" x2="26" y2="19" stroke="#404040" stroke-width="1"/>
+      <line x1="26" y1="0" x2="26" y2="19" stroke="#404040" stroke-width="1"/>
+      <!-- Inner shadow ring -->
+      <line x1="1" y1="1" x2="25" y2="1" stroke="#dfdfdf" stroke-width="1"/>
+      <line x1="1" y1="1" x2="1" y2="18" stroke="#dfdfdf" stroke-width="1"/>
+      <line x1="1" y1="18" x2="25" y2="18" stroke="#888" stroke-width="1"/>
+      <line x1="25" y1="1" x2="25" y2="18" stroke="#888" stroke-width="1"/>
+      <!-- Dark inner bezel -->
+      <rect x="2" y="2" width="22" height="15" fill="#2a2a2a"/>
+      <!-- Screen — strobed via JS -->
+      <rect x="3" y="3" width="20" height="13" fill="#0000a8"/>
+      <!-- BSOD text lines on screen -->
+      <rect x="4" y="5"  width="18" height="1" fill="#c0c0c0" opacity=".85"/>
+      <rect x="4" y="7"  width="12" height="1" fill="#c0c0c0" opacity=".45"/>
+      <rect x="4" y="9"  width="15" height="1" fill="#c0c0c0" opacity=".3"/>
+      <rect x="4" y="11" width="8"  height="1" fill="#c0c0c0" opacity=".2"/>
+      <rect x="4" y="13" width="11" height="1" fill="#c0c0c0" opacity=".15"/>
+      <!-- Neck -->
+      <rect x="10" y="19" width="6" height="2" fill="#b0b0b0"/>
+      <line x1="10" y1="19" x2="16" y2="19" stroke="#dfdfdf" stroke-width="1"/>
+      <line x1="10" y1="21" x2="16" y2="21" stroke="#555" stroke-width="1"/>
+      <!-- Base -->
+      <rect x="6" y="21" width="14" height="3" fill="#c0c0c0"/>
+      <line x1="6"  y1="21" x2="20" y2="21" stroke="#dfdfdf" stroke-width="1"/>
+      <line x1="6"  y1="24" x2="20" y2="24" stroke="#404040" stroke-width="1"/>
+      <line x1="6"  y1="21" x2="6"  y2="24" stroke="#dfdfdf" stroke-width="1"/>
+      <line x1="20" y1="21" x2="20" y2="24" stroke="#404040" stroke-width="1"/>
+    </svg>
+  </div>
+</div>
+
+<canvas id="dis"></canvas>
+
+<!-- COLLECTION -->
+<div id="col">
+  <div class="col-inner">
+    <div class="col-logo" id="col-logo" style="cursor:none;" title="return"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 324 102" width="324" height="102" shape-rendering="crispEdges" style="fill:#ff1111;display:block;max-width:100%;max-height:54px;width:auto;filter:drop-shadow(0 0 4px #ff0000) drop-shadow(0 0 10px #aa0000);"><rect x="54" y="6" width="6" height="6"/><rect x="102" y="6" width="6" height="6"/><rect x="48" y="12" width="6" height="6"/><rect x="54" y="12" width="6" height="6"/><rect x="60" y="12" width="6" height="6"/><rect x="96" y="12" width="6" height="6"/><rect x="102" y="12" width="6" height="6"/><rect x="108" y="12" width="6" height="6"/><rect x="126" y="12" width="6" height="6"/><rect x="204" y="12" width="6" height="6"/><rect x="54" y="18" width="6" height="6"/><rect x="60" y="18" width="6" height="6"/><rect x="102" y="18" width="6" height="6"/><rect x="108" y="18" width="6" height="6"/><rect x="126" y="18" width="6" height="6"/><rect x="132" y="18" width="6" height="6"/><rect x="204" y="18" width="6" height="6"/><rect x="210" y="18" width="6" height="6"/><rect x="54" y="24" width="6" height="6"/><rect x="60" y="24" width="6" height="6"/><rect x="102" y="24" width="6" height="6"/><rect x="108" y="24" width="6" height="6"/><rect x="132" y="24" width="6" height="6"/><rect x="210" y="24" width="6" height="6"/><rect x="54" y="30" width="6" height="6"/><rect x="60" y="30" width="6" height="6"/><rect x="102" y="30" width="6" height="6"/><rect x="108" y="30" width="6" height="6"/><rect x="24" y="36" width="6" height="6"/><rect x="54" y="36" width="6" height="6"/><rect x="60" y="36" width="6" height="6"/><rect x="72" y="36" width="6" height="6"/><rect x="102" y="36" width="6" height="6"/><rect x="108" y="36" width="6" height="6"/><rect x="126" y="36" width="6" height="6"/><rect x="156" y="36" width="6" height="6"/><rect x="180" y="36" width="6" height="6"/><rect x="204" y="36" width="6" height="6"/><rect x="246" y="36" width="6" height="6"/><rect x="276" y="36" width="6" height="6"/><rect x="300" y="36" width="6" height="6"/><rect x="18" y="42" width="6" height="6"/><rect x="24" y="42" width="6" height="6"/><rect x="30" y="42" width="6" height="6"/><rect x="54" y="42" width="6" height="6"/><rect x="60" y="42" width="6" height="6"/><rect x="66" y="42" width="6" height="6"/><rect x="72" y="42" width="6" height="6"/><rect x="78" y="42" width="6" height="6"/><rect x="102" y="42" width="6" height="6"/><rect x="108" y="42" width="6" height="6"/><rect x="126" y="42" width="6" height="6"/><rect x="132" y="42" width="6" height="6"/><rect x="150" y="42" width="6" height="6"/><rect x="156" y="42" width="6" height="6"/><rect x="162" y="42" width="6" height="6"/><rect x="174" y="42" width="6" height="6"/><rect x="180" y="42" width="6" height="6"/><rect x="186" y="42" width="6" height="6"/><rect x="204" y="42" width="6" height="6"/><rect x="210" y="42" width="6" height="6"/><rect x="240" y="42" width="6" height="6"/><rect x="246" y="42" width="6" height="6"/><rect x="252" y="42" width="6" height="6"/><rect x="270" y="42" width="6" height="6"/><rect x="276" y="42" width="6" height="6"/><rect x="282" y="42" width="6" height="6"/><rect x="294" y="42" width="6" height="6"/><rect x="300" y="42" width="6" height="6"/><rect x="306" y="42" width="6" height="6"/><rect x="12" y="48" width="6" height="6"/><rect x="24" y="48" width="6" height="6"/><rect x="30" y="48" width="6" height="6"/><rect x="36" y="48" width="6" height="6"/><rect x="54" y="48" width="6" height="6"/><rect x="60" y="48" width="6" height="6"/><rect x="72" y="48" width="6" height="6"/><rect x="78" y="48" width="6" height="6"/><rect x="84" y="48" width="6" height="6"/><rect x="102" y="48" width="6" height="6"/><rect x="108" y="48" width="6" height="6"/><rect x="126" y="48" width="6" height="6"/><rect x="132" y="48" width="6" height="6"/><rect x="156" y="48" width="6" height="6"/><rect x="162" y="48" width="6" height="6"/><rect x="180" y="48" width="6" height="6"/><rect x="186" y="48" width="6" height="6"/><rect x="204" y="48" width="6" height="6"/><rect x="210" y="48" width="6" height="6"/><rect x="234" y="48" width="6" height="6"/><rect x="246" y="48" width="6" height="6"/><rect x="252" y="48" width="6" height="6"/><rect x="258" y="48" width="6" height="6"/><rect x="276" y="48" width="6" height="6"/><rect x="282" y="48" width="6" height="6"/><rect x="288" y="48" width="6" height="6"/><rect x="300" y="48" width="6" height="6"/><rect x="306" y="48" width="6" height="6"/><rect x="6" y="54" width="6" height="6"/><rect x="12" y="54" width="6" height="6"/><rect x="30" y="54" width="6" height="6"/><rect x="36" y="54" width="6" height="6"/><rect x="54" y="54" width="6" height="6"/><rect x="60" y="54" width="6" height="6"/><rect x="78" y="54" width="6" height="6"/><rect x="84" y="54" width="6" height="6"/><rect x="102" y="54" width="6" height="6"/><rect x="108" y="54" width="6" height="6"/><rect x="126" y="54" width="6" height="6"/><rect x="132" y="54" width="6" height="6"/><rect x="156" y="54" width="6" height="6"/><rect x="162" y="54" width="6" height="6"/><rect x="180" y="54" width="6" height="6"/><rect x="186" y="54" width="6" height="6"/><rect x="204" y="54" width="6" height="6"/><rect x="210" y="54" width="6" height="6"/><rect x="228" y="54" width="6" height="6"/><rect x="234" y="54" width="6" height="6"/><rect x="252" y="54" width="6" height="6"/><rect x="258" y="54" width="6" height="6"/><rect x="276" y="54" width="6" height="6"/><rect x="282" y="54" width="6" height="6"/><rect x="300" y="54" width="6" height="6"/><rect x="306" y="54" width="6" height="6"/><rect x="6" y="60" width="6" height="6"/><rect x="12" y="60" width="6" height="6"/><rect x="30" y="60" width="6" height="6"/><rect x="36" y="60" width="6" height="6"/><rect x="54" y="60" width="6" height="6"/><rect x="60" y="60" width="6" height="6"/><rect x="78" y="60" width="6" height="6"/><rect x="84" y="60" width="6" height="6"/><rect x="102" y="60" width="6" height="6"/><rect x="108" y="60" width="6" height="6"/><rect x="126" y="60" width="6" height="6"/><rect x="132" y="60" width="6" height="6"/><rect x="156" y="60" width="6" height="6"/><rect x="162" y="60" width="6" height="6"/><rect x="180" y="60" width="6" height="6"/><rect x="186" y="60" width="6" height="6"/><rect x="204" y="60" width="6" height="6"/><rect x="210" y="60" width="6" height="6"/><rect x="228" y="60" width="6" height="6"/><rect x="234" y="60" width="6" height="6"/><rect x="252" y="60" width="6" height="6"/><rect x="258" y="60" width="6" height="6"/><rect x="276" y="60" width="6" height="6"/><rect x="282" y="60" width="6" height="6"/><rect x="300" y="60" width="6" height="6"/><rect x="306" y="60" width="6" height="6"/><rect x="6" y="66" width="6" height="6"/><rect x="12" y="66" width="6" height="6"/><rect x="30" y="66" width="6" height="6"/><rect x="36" y="66" width="6" height="6"/><rect x="54" y="66" width="6" height="6"/><rect x="60" y="66" width="6" height="6"/><rect x="78" y="66" width="6" height="6"/><rect x="84" y="66" width="6" height="6"/><rect x="102" y="66" width="6" height="6"/><rect x="108" y="66" width="6" height="6"/><rect x="126" y="66" width="6" height="6"/><rect x="132" y="66" width="6" height="6"/><rect x="156" y="66" width="6" height="6"/><rect x="162" y="66" width="6" height="6"/><rect x="180" y="66" width="6" height="6"/><rect x="186" y="66" width="6" height="6"/><rect x="204" y="66" width="6" height="6"/><rect x="210" y="66" width="6" height="6"/><rect x="228" y="66" width="6" height="6"/><rect x="234" y="66" width="6" height="6"/><rect x="252" y="66" width="6" height="6"/><rect x="258" y="66" width="6" height="6"/><rect x="276" y="66" width="6" height="6"/><rect x="282" y="66" width="6" height="6"/><rect x="300" y="66" width="6" height="6"/><rect x="306" y="66" width="6" height="6"/><rect x="6" y="72" width="6" height="6"/><rect x="12" y="72" width="6" height="6"/><rect x="30" y="72" width="6" height="6"/><rect x="36" y="72" width="6" height="6"/><rect x="54" y="72" width="6" height="6"/><rect x="60" y="72" width="6" height="6"/><rect x="78" y="72" width="6" height="6"/><rect x="84" y="72" width="6" height="6"/><rect x="102" y="72" width="6" height="6"/><rect x="108" y="72" width="6" height="6"/><rect x="126" y="72" width="6" height="6"/><rect x="132" y="72" width="6" height="6"/><rect x="156" y="72" width="6" height="6"/><rect x="162" y="72" width="6" height="6"/><rect x="180" y="72" width="6" height="6"/><rect x="186" y="72" width="6" height="6"/><rect x="204" y="72" width="6" height="6"/><rect x="210" y="72" width="6" height="6"/><rect x="228" y="72" width="6" height="6"/><rect x="234" y="72" width="6" height="6"/><rect x="252" y="72" width="6" height="6"/><rect x="258" y="72" width="6" height="6"/><rect x="276" y="72" width="6" height="6"/><rect x="282" y="72" width="6" height="6"/><rect x="300" y="72" width="6" height="6"/><rect x="306" y="72" width="6" height="6"/><rect x="6" y="78" width="6" height="6"/><rect x="12" y="78" width="6" height="6"/><rect x="18" y="78" width="6" height="6"/><rect x="30" y="78" width="6" height="6"/><rect x="54" y="78" width="6" height="6"/><rect x="60" y="78" width="6" height="6"/><rect x="66" y="78" width="6" height="6"/><rect x="78" y="78" width="6" height="6"/><rect x="102" y="78" width="6" height="6"/><rect x="108" y="78" width="6" height="6"/><rect x="126" y="78" width="6" height="6"/><rect x="132" y="78" width="6" height="6"/><rect x="162" y="78" width="6" height="6"/><rect x="168" y="78" width="6" height="6"/><rect x="180" y="78" width="6" height="6"/><rect x="186" y="78" width="6" height="6"/><rect x="204" y="78" width="6" height="6"/><rect x="210" y="78" width="6" height="6"/><rect x="228" y="78" width="6" height="6"/><rect x="234" y="78" width="6" height="6"/><rect x="240" y="78" width="6" height="6"/><rect x="252" y="78" width="6" height="6"/><rect x="276" y="78" width="6" height="6"/><rect x="282" y="78" width="6" height="6"/><rect x="300" y="78" width="6" height="6"/><rect x="306" y="78" width="6" height="6"/><rect x="12" y="84" width="6" height="6"/><rect x="18" y="84" width="6" height="6"/><rect x="24" y="84" width="6" height="6"/><rect x="60" y="84" width="6" height="6"/><rect x="66" y="84" width="6" height="6"/><rect x="72" y="84" width="6" height="6"/><rect x="102" y="84" width="6" height="6"/><rect x="108" y="84" width="6" height="6"/><rect x="114" y="84" width="6" height="6"/><rect x="126" y="84" width="6" height="6"/><rect x="132" y="84" width="6" height="6"/><rect x="138" y="84" width="6" height="6"/><rect x="168" y="84" width="6" height="6"/><rect x="174" y="84" width="6" height="6"/><rect x="180" y="84" width="6" height="6"/><rect x="204" y="84" width="6" height="6"/><rect x="210" y="84" width="6" height="6"/><rect x="216" y="84" width="6" height="6"/><rect x="234" y="84" width="6" height="6"/><rect x="240" y="84" width="6" height="6"/><rect x="246" y="84" width="6" height="6"/><rect x="276" y="84" width="6" height="6"/><rect x="282" y="84" width="6" height="6"/><rect x="300" y="84" width="6" height="6"/><rect x="306" y="84" width="6" height="6"/><rect x="312" y="84" width="6" height="6"/><rect x="18" y="90" width="6" height="6"/><rect x="66" y="90" width="6" height="6"/><rect x="108" y="90" width="6" height="6"/><rect x="132" y="90" width="6" height="6"/><rect x="174" y="90" width="6" height="6"/><rect x="210" y="90" width="6" height="6"/><rect x="240" y="90" width="6" height="6"/><rect x="276" y="90" width="6" height="6"/><rect x="306" y="90" width="6" height="6"/></svg></div>
+    <p class="col-desc">SIX ON-CHAIN CONTAINMENT OBJECTS. Rendered as animated SVG relics on Ethereum.</p>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<script>
+const CONTRACT = '0x7c54eed83f522663a16c6dbcc2fc34669abc7f07';
+
+// Alchemy demo key — no signup needed, CORS-enabled, returns on-chain SVG from raw.metadata.image
+const ALCHEMY = 'https://eth-mainnet.g.alchemy.com/nft/v3/demo/getNFTMetadata';
+
+// Public Ethereum RPCs as fallback for raw eth_call
+const RPCS = [
+  'https://rpc.ankr.com/eth',
+  'https://eth.llamarpc.com',
+  'https://ethereum.publicnode.com',
+  'https://1rpc.io/eth',
+  'https://eth.meowrpc.com',
+  'https://mainnet.gateway.tenderly.co'
+];
+
+
+// ── MANIFOLD LISTING IDs ─────────────────────────────────────────────
+// Add listing ID for each piece once created in Manifold Studio
+var LISTINGS = {
+  1: '4055113968',
+  2: null,
+  3: null,
+  4: null,
+  5: null,
+  6: null
+};
+
+const OS = 'https://opensea.io/assets/ethereum/0x7c54eed83f522663a16c6dbcc2fc34669abc7f07/';
+const PIECES = [
+  {id:1, name:'Bound in Chains', desc:'Ethernal..',                              link:'https://manifold.xyz/@vstrvl/contract/120748272/1', os:OS+'1'},
+  {id:2, name:'Infamia',         desc:'deathless cringe.',                        link:'https://manifold.xyz/@vstrvl/contract/120748272/2', os:OS+'2'},
+  {id:3, name:'perma_pain',      desc:'&lt;fff wound="terminal"&gt;',             link:'https://manifold.xyz/@vstrvl/contract/120748272/3', os:OS+'3'},
+  {id:4, name:'drain000r',       desc:'all your balances are belong to us.',      link:'https://manifold.xyz/@vstrvl/contract/120748272/4', os:OS+'4'},
+  {id:5, name:'fiatface',        desc:'&#x26A0; WARNING: ASSET IN DEGENERATIVE STATE &#x26A0;', link:'https://manifold.xyz/@vstrvl/contract/120748272/5', os:OS+'5'},
+  {id:6, name:'E V E R D O O M', desc:'the final containment. the last object.',              link:'https://manifold.xyz/@vstrvl/contract/120748272/7', os:OS+'7', tokenId:7}
+];
+
+// ── CURSOR ──────────────────────────────────────────────────────────
+const $cur = document.getElementById('cursor');
+document.addEventListener('mousemove', function(e){
+  $cur.style.left = e.clientX + 'px';
+  $cur.style.top  = e.clientY + 'px';
+  pushTrail(e.clientX, e.clientY);
+});
+
+// ── TV NOISE ─────────────────────────────────────────────────────────
+const $nc = document.getElementById('noise-canvas'), nc = $nc.getContext('2d');
+function rsNoise(){ $nc.width = innerWidth; $nc.height = innerHeight; }
+addEventListener('resize', rsNoise); rsNoise();
+(function tick(){
+  const id = nc.createImageData($nc.width, $nc.height), d = id.data;
+  for(var i = 0; i < d.length; i += 4){ var v = 80+(Math.random()*175|0); d[i]=d[i+1]=d[i+2]=v; d[i+3]=255; }
+  nc.putImageData(id, 0, 0); requestAnimationFrame(tick);
+})();
+
+// ── CHAIN TRAIL ──────────────────────────────────────────────────────
+const $tc = document.getElementById('trail-canvas'), tc = $tc.getContext('2d');
+function rsTrail(){ $tc.width = innerWidth; $tc.height = innerHeight; }
+addEventListener('resize', rsTrail); rsTrail();
+// trail array replaced by blood particle system
+// ── BLOOD PARTICLE SYSTEM ──────────────────────────────────────────
+var bloodParticles = [];
+
+function spawnBlood(x, y) {
+  var count = 3 + Math.random() * 3 | 0;
+  for (var i = 0; i < count; i++) {
+    var angle = Math.PI * 0.5 + (Math.random() - 0.5) * 1.2; // downward spread
+    var speed = 0.4 + Math.random() * 1.8;
+    var ps = 2 + (Math.random() * 2 | 0); // pixel size 2 or 3 or 4
+    bloodParticles.push({
+      x: x + (Math.random() - 0.5) * 6,
+      y: y + (Math.random() - 0.5) * 6,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 1.0,
+      decay: 0.028 + Math.random() * 0.032,
+      ps: ps,
+      // randomise shade: dark red → bright red
+      r: 140 + (Math.random() * 80 | 0),
+      g: 0,
+      b: 0
+    });
+  }
+}
+
+// Spawn on movement
+var _lastTrailX = 0, _lastTrailY = 0;
+function pushTrail(x, y) {
+  var dx = x - _lastTrailX, dy = y - _lastTrailY;
+  if (Math.hypot(dx, dy) < 6) return;
+  _lastTrailX = x; _lastTrailY = y;
+  spawnBlood(x, y);
+}
+
+(function tickTrail() {
+  tc.clearRect(0, 0, $tc.width, $tc.height);
+  for (var i = bloodParticles.length - 1; i >= 0; i--) {
+    var p = bloodParticles[i];
+    p.x  += p.vx;
+    p.y  += p.vy;
+    p.vy += 0.06; // gravity
+    p.vx *= 0.95;
+    p.life -= p.decay;
+    if (p.life <= 0) { bloodParticles.splice(i, 1); continue; }
+    // snap to pixel grid for chunky pixel look
+    var px = Math.round(p.x / p.ps) * p.ps;
+    var py = Math.round(p.y / p.ps) * p.ps;
+    tc.fillStyle = 'rgba(' + p.r + ',' + p.g + ',' + p.b + ',' + p.life.toFixed(2) + ')';
+    tc.fillRect(px, py, p.ps, p.ps);
+    // occasional darker splat pixel adjacent
+    if (p.life > 0.5 && Math.random() > 0.6) {
+      tc.fillStyle = 'rgba(80,0,0,' + (p.life * 0.4).toFixed(2) + ')';
+      tc.fillRect(px + p.ps, py, p.ps, p.ps);
+    }
+  }
+  requestAnimationFrame(tickTrail);
+})();
+
+// ── DISINTEGRATION ───────────────────────────────────────────────────
+const $dis = document.getElementById('dis'), dc = $dis.getContext('2d');
+function rsDis(){ $dis.width = innerWidth; $dis.height = innerHeight; }
+addEventListener('resize', rsDis); rsDis();
+var parts = [], fired = false;
+
+document.getElementById('pc-icon').addEventListener('click', startDis);
+
+// ── BSOD STROBE: hard blue ↔ bright red loop at 30fps ───────────────
+var strobeState = 0;
+var strobeActive = true;
+var strobeLoop; strobeLoop = function() {
+  if (!strobeActive) return;
+  strobeState = strobeState === 0 ? 1 : 0;
+  var col = strobeState === 0 ? '#0000a8' : '#cc0000';
+  var screens = document.querySelectorAll('#pc-icon svg rect[fill="#0000a8"], #pc-icon svg rect[fill="#cc0000"]');
+  screens.forEach(function(r) { r.setAttribute('fill', col); });
+  setTimeout(strobeLoop, 33);
+};
+strobeLoop();
+
+function startDis(){
+  if(fired) return; fired=true;
+  strobeActive = false; // stop strobe
+
+  var icon = document.getElementById('pc-icon');
+  var r = icon.getBoundingClientRect();
+  var PS = 2; // 2px pixel blocks
+
+  // Build pixel grid — monitor only regions
+  for(var py = 0; py < r.height; py += PS){
+    for(var px = 0; px < r.width; px += PS){
+      var nx = px / r.width, ny = py / r.height;
+      var col;
+      if(nx>0.11 && nx<0.89 && ny>0.0 && ny<0.73){
+        // Screen (BSOD/red)
+        if(nx>0.15 && nx<0.85 && ny>0.08 && ny<0.65){
+          col = Math.random()>0.5 ? [0,0,168] : [204,0,0];
+        } else {
+          // Bezel
+          var v = 150+Math.random()*60|0; col=[v,v,v];
+        }
+      } else if(nx>0.23 && nx<0.77 && ny>0.73 && ny<0.88){
+        // Neck
+        var vn=140+Math.random()*50|0; col=[vn,vn,vn];
+      } else if(nx>0.1 && nx<0.9 && ny>0.88 && ny<1.0){
+        // Base
+        var vb=150+Math.random()*55|0; col=[vb,vb,vb];
+      } else { continue; }
+
+      // Three speed classes — fast, medium, slow — all heading top-right
+      var rnd = Math.random();
+      var spd, delayFactor;
+      if(rnd < 0.2){
+        spd = 4.5 + Math.random()*5.0; // fast
+        delayFactor = 0;
+      } else if(rnd < 0.6){
+        spd = 1.8 + Math.random()*3.2; // medium
+        delayFactor = Math.random()*0.25;
+      } else {
+        spd = 0.3 + Math.random()*1.6; // slow, lazy
+        delayFactor = Math.random()*0.55;
+      }
+
+      // Direction: top-right cone, roughly -45° ± 35° spread
+      // angle in radians: -PI/4 = top-right diagonal, spread ±35° = ±0.61rad
+      var baseAngle = -Math.PI * 0.42; // slightly above 45°
+      var spread    = (Math.random()-0.5) * 1.2; // ±34° spread
+      var angle     = baseAngle + spread;
+
+      parts.push({
+        x:   r.left + px + PS/2,
+        y:   r.top  + py + PS/2,
+        vx:  Math.cos(angle) * spd,
+        vy:  Math.sin(angle) * spd,
+        col: col,
+        sz:  PS + (Math.random()>0.82 ? 1 : 0),
+        a:   0.88 + Math.random()*0.12,
+        delay: delayFactor
+      });
+    }
+  }
+
+  icon.style.transition='opacity .04s'; icon.style.opacity='0';
+  $dis.style.display='block';
+
+  (function tickDis(){
+    dc.clearRect(0,0,$dis.width,$dis.height);
+    var any=false;
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i];
+      if(p.a<=0) continue; any=true;
+      // stagger: slow particles wait before launching
+      if(p.delay > 0){ p.delay -= 0.014; continue; }
+      // Wind pushes toward top-right continuously
+      // x: accelerate right; y: push upward (negative = up)
+      var drag = (Math.abs(p.vx) > 4 || Math.abs(p.vy) > 4) ? 0.976 : 0.991;
+      p.vx += 0.12 + (Math.random()-0.5)*0.09;   // rightward gust
+      p.vy -= 0.06 + (Math.random()-0.5)*0.07;   // upward lift + flutter
+      p.vx *= drag;
+      p.vy *= drag;
+      p.x  += p.vx; p.y += p.vy;
+      p.a  -= 0.005 + Math.random()*0.007;        // varying fade, disappear as they rise
+      var sx=Math.round(p.x/PS)*PS, sy=Math.round(p.y/PS)*PS;
+      dc.fillStyle='rgba('+p.col[0]+','+p.col[1]+','+p.col[2]+','+Math.max(0,p.a).toFixed(2)+')';
+      dc.fillRect(sx, sy, p.sz, p.sz);
+    }
+    if(any){ requestAnimationFrame(tickDis); }
+    else{
+      $dis.style.display='none';
+      document.getElementById('landing').style.display='none';
+      openCol();
+    }
+  })();
+}
+
+// ── COLLECTION ───────────────────────────────────────────────────────
+function openCol(){
+  document.getElementById('noise-canvas').style.opacity = '0.13';
+  var _vc=document.getElementById('vstrvl-credit'); if(_vc) _vc.style.opacity='0';
+  var col = document.getElementById('col');
+  col.style.display = 'block';
+  col.style.opacity = '0';
+  col.style.transition = 'opacity 2.4s ease';
+  // tiny delay so browser registers display:block before transitioning
+  setTimeout(function(){ col.style.opacity='1'; }, 40);
+  buildGrid();
+  fetchAll();
+  // logo click returns to landing
+  setTimeout(function(){
+    var logo = document.getElementById('col-logo');
+    if(logo) logo.addEventListener('click', returnToLanding);
+  }, 100);
+}
+
+function buildGrid(){
+  var g = document.getElementById('grid'); g.innerHTML = '';
+  PIECES.forEach(function(p){
+    var card = document.createElement('div');
+    card.className = 'card'; card.id = 'card-'+p.id;
+    card.innerHTML =
+      '<div class="frame" id="fr-'+p.id+'"><span class="loading">RESOLVING...</span></div>'+
+      '<div class="ov">'+
+        '<span class="pname">'+p.name+'</span>'+
+        '<div class="pdesc">'+p.desc+'</div>'+
+        '<div class="plinks">'+
+          '<a class="plink" href="'+p.link+'" target="_blank" rel="noopener">&rarr; MANIFOLD</a>'+
+          '<a class="plink" href="'+p.os+'" target="_blank" rel="noopener">&rarr; OPENSEA</a>'+
+        '</div>'+
+      '</div>';
+    (function(pp){
+      card.addEventListener('click',function(e){
+        if(e.target.tagName==='A') return;
+        openDetail(pp);
+      });
+    })(p);
+    g.appendChild(card);
+  });
+}
+
+// ── FETCH ARTWORK ─────────────────────────────────────────────────────
+// Timeout-safe fetch
+function fetchT(url, opts, ms){
+  ms = ms || 12000;
+  return new Promise(function(resolve, reject){
+    var timer = setTimeout(function(){ reject(new Error('timeout')); }, ms);
+    fetch(url, opts||{}).then(function(r){ clearTimeout(timer); resolve(r); }).catch(function(e){ clearTimeout(timer); reject(e); });
+  });
+}
+
+// Decode ABI-encoded string from eth_call hex result
+function decABI(hex){
+  var h = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if(h.length < 128) return null;
+  var len = parseInt(h.slice(64,128), 16);
+  var raw = h.slice(128, 128+len*2);
+  try{
+    var bytes = new Uint8Array(raw.match(/.{2}/g).map(function(b){ return parseInt(b,16); }));
+    return new TextDecoder().decode(bytes);
+  } catch(e){ return null; }
+}
+
+// Parse any metadata URI format into an image string
+function parseIntoImage(uri){
+  if(!uri) return null;
+  var meta = null;
+  try{
+    if(uri.startsWith('data:application/json;base64,')){
+      meta = JSON.parse(atob(uri.slice(29)));
+    } else if(uri.startsWith('data:application/json,')){
+      meta = JSON.parse(decodeURIComponent(uri.slice(22)));
+    }
+  } catch(e){ return null; }
+  if(!meta) return null;
+  return meta.image || meta.image_url || meta.animation_url || null;
+}
+
+// Attempt 1: Alchemy NFT API — returns on-chain SVG in raw.metadata.image
+async function tryAlchemy(id, frameId){
+  frameId = frameId || id;
+  try{
+    var url = ALCHEMY + '?contractAddress=' + CONTRACT + '&tokenId=' + id + '&tokenType=erc721&refreshCache=false';
+    var r = await fetchT(url, { headers:{'Accept':'application/json'} }, 12000);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var j = await r.json();
+    // on-chain SVG lives in raw.metadata.image
+    var img = (j.raw && j.raw.metadata && j.raw.metadata.image)
+           || (j.image && j.image.originalUrl)
+           || (j.image && j.image.cachedUrl)
+           || (j.metadata && j.metadata.image)
+           || null;
+    console.log('['+frameId+'] Alchemy response image:', img ? img.slice(0,80) : 'null');
+    return img || null;
+  } catch(e){
+    console.log('['+frameId+'] Alchemy failed:', e.message);
+    return null;
+  }
+}
+
+// Attempt 2: Direct eth_call via public RPCs racing each other
+async function tryRPC(id, frameId){
+  frameId = frameId || id;
+  var padId = id.toString(16).padStart(64,'0');
+  var calldata = '0xc87b56dd' + padId; // tokenURI(uint256)
+  var calls = RPCS.map(function(rpc){
+    return fetchT(rpc, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({jsonrpc:'2.0',method:'eth_call',params:[{to:CONTRACT,data:calldata},'latest'],id:id})
+    }, 10000)
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(!j.result || j.result === '0x' || (j.error)) throw new Error('empty or error');
+      return j.result;
+    });
+  });
+
+  var hexResult;
+  try{
+    // Use Promise.any if available, else race with filter
+    if(typeof Promise.any === 'function'){
+      hexResult = await Promise.any(calls);
+    } else {
+      // Fallback for older browsers
+      hexResult = await new Promise(function(resolve, reject){
+        var settled = 0;
+        calls.forEach(function(p){ p.then(resolve).catch(function(){ if(++settled===calls.length) reject(new Error('all failed')); }); });
+      });
+    }
+  } catch(e){
+    console.log('['+id+'] all RPCs failed:', e.message);
+    return null;
+  }
+
+  var uri = decABI(hexResult);
+  console.log('['+id+'] RPC tokenURI:', uri ? uri.slice(0,80) : 'null');
+  if(!uri) return null;
+  return parseIntoImage(uri);
+}
+
+// Main: try Alchemy first, then RPC
+async function getImg(id, frameId){
+  frameId = frameId || id;
+  var img = await tryAlchemy(id, frameId);
+  if(img) return img;
+  console.log('['+frameId+'] Falling back to direct RPC...');
+  return await tryRPC(id, frameId);
+}
+
+// Render image data into the card frame
+function setFrame(id, img){
+  var fr = document.getElementById('fr-'+id);
+  if(!fr) return;
+
+  if(!img){
+    // Show a clickable placeholder pointing to Manifold
+    var p = PIECES[id-1];
+    fr.innerHTML = '<a href="'+p.link+'" target="_blank" rel="noopener" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;text-decoration:none;gap:10px;">'
+      + '<span style="font-family:Share Tech Mono,monospace;font-size:9px;color:#1a1a1a;letter-spacing:2px">// ON-CHAIN</span>'
+      + '<span style="font-size:11px;color:#1e1e1e;font-family:Share Tech Mono,monospace;letter-spacing:1px;border:1px solid #111;padding:4px 10px;">&rarr; VIEW ON MANIFOLD</span>'
+      + '</a>';
+    return;
+  }
+
+  // SVG data URI — render in sandboxed iframe to preserve CSS animations
+  if(img.startsWith('data:image/svg+xml')){
+    var svgSrc = null;
+    if(img.startsWith('data:image/svg+xml;base64,')){
+      try{ svgSrc = atob(img.slice(26)); } catch(e){}
+    } else if(img.startsWith('data:image/svg+xml,')){
+      try{ svgSrc = decodeURIComponent(img.replace(/^data:image\/svg\+xml,/,'')); } catch(e){}
+    }
+    if(svgSrc){
+      var doc = '<!DOCTYPE html><html><head>'
+        + '<style>*{margin:0;padding:0;box-sizing:border-box;cursor:none!important}html,body{width:100%;height:100%;overflow:hidden;background:#000}'
+        + 'svg{display:block;width:100%;height:100%}</style>'
+        + '<\/head><body>' + svgSrc + '<\/body><\/html>';
+      var ifr = document.createElement('iframe');
+      ifr.style.cssText = 'width:100%;height:100%;border:none;display:block;cursor:none;pointer-events:none;';
+      ifr.sandbox = 'allow-scripts';
+      ifr.srcdoc = doc;
+      fr.innerHTML = ''; fr.appendChild(ifr);
+      return;
+    }
+  }
+
+  // GIF / PNG / JPEG / remote SVG URL
+  var el = document.createElement('img');
+  el.src = img;
+  el.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;';
+  el.onerror = function(){ setFrame(id, null); };
+  fr.innerHTML = ''; fr.appendChild(el);
+}
+
+// ── RETURN TO LANDING ────────────────────────────────────────────────
+function returnToLanding(){
+  var col = document.getElementById('col');
+  col.style.transition = 'opacity 0.6s ease';
+  col.style.opacity = '0';
+  setTimeout(function(){
+    col.style.display = 'none';
+    // reset disintegration state
+    fired = false;
+    parts = [];
+    // reset icon visibility
+    var icon = document.getElementById('pc-icon');
+    icon.style.opacity = '0';
+    icon.style.transition = 'none';
+    var landing = document.getElementById('landing');
+    landing.style.display = 'flex';
+    landing.style.opacity = '0';
+    landing.style.transition = 'opacity 0.8s ease';
+    // reset icon to visible and restart strobe
+    setTimeout(function(){
+      icon.style.opacity = '1';
+      landing.style.opacity = '1';
+      strobeActive = true;
+      strobeLoop();
+    }, 50);
+    document.getElementById('noise-canvas').style.opacity = '0.13';
+  var _vc=document.getElementById('vstrvl-credit'); if(_vc) _vc.style.opacity='0';
+  }, 650);
+}
+
+async function fetchAll(){
+  PIECES.forEach(function(p){
+    var tokenId = p.tokenId || p.id;
+    getImg(tokenId, p.id).then(function(img){ setFrame(p.id, img); });
+  });
+}
+</script>
+</body>
+
+<div id="detail">
+  <div class="det-layout">
+    <div class="det-viewer" id="det-viewer">
+      <div id="det-iframe-wrap"><iframe id="det-iframe" sandbox="allow-scripts" srcdoc=""></iframe></div>
+
+    </div>
+    <div class="det-sb">
+      <button class="det-back" onclick="closeDetail()">&#8592; back</button>
+      <div class="det-zbar-sb">
+        <label>zoom</label>
+        <input type="range" id="det-zoom" min="100" max="666" value="100" oninput="detZoom(this.value)">
+        <span id="det-zlbl">100%</span>
+      </div>
+      <div class="det-name" id="det-name"></div>
+      <div class="det-desc" id="det-desc"></div>
+      <button id="det-bid-btn" onclick="detBidNow()">⬥ bid now</button>
+      <div class="det-sec">metadata</div>
+      <div class="det-meta">
+        <div class="det-mc"><div class="det-mk">standard</div><div class="det-mv">erc-721</div></div>
+        <div class="det-mc"><div class="det-mk">network</div><div class="det-mv">ethereum</div></div>
+        <div class="det-mc"><div class="det-mk">token id</div><div class="det-mv" id="det-tid"></div></div>
+        <div class="det-mc"><div class="det-mk">format</div><div class="det-mv">on-chain svg</div></div>
+      </div>
+      <div class="det-sec">contract</div>
+      <div class="det-addr">0x7c54eed83f522663a16c6dbcc2fc34669abc7f07</div>
+      <div class="det-links">
+        <a class="det-lnk" id="det-mfld" href="#" target="_blank" rel="noopener">&#8594; manifold</a>
+        <a class="det-lnk" id="det-os" href="#" target="_blank" rel="noopener">&#8594; opensea</a>
+      </div>
+      <div id="det-manifold-widget" style="display:none;margin-top:4px;"></div>
+      <div id="det-listing-none" style="display:none;font-family:'Pixelify Sans',monospace;font-size:9px;color:#333;letter-spacing:3px;text-transform:lowercase;padding:14px;border:1px solid #0d0d0d;background:#040404;margin-top:4px;">// listing not yet active</div>
+    </div>
+  </div>
+</div>
+<script>
+var detOpen=false,detScale=1,detPanX=0,detPanY=0,detDrag=false,detDragSX=0,detDragSY=0,detCache={};
+function detTx(){document.getElementById('det-iframe').style.transform='translate('+detPanX+'px,'+detPanY+'px) scale('+detScale+')';}
+function detZoom(v){detScale=v/100;if(detScale<=1){detPanX=0;detPanY=0;}document.getElementById('det-zlbl').textContent=v+'%';detTx();}
+function openDetail(p){
+  var col=document.getElementById('col');
+  col.style.transition='opacity .6s ease';col.style.opacity='0';
+  setTimeout(function(){
+    col.style.display='none';
+    var tmp=document.createElement('div');tmp.innerHTML=p.desc;
+    document.getElementById('det-name').textContent=p.name.toLowerCase();
+    document.getElementById('det-tid').textContent=p.tokenId||p.id;
+    document.getElementById('det-desc').textContent=tmp.textContent.toLowerCase();
+    document.getElementById('det-mfld').href=p.link||'#';
+    _currentPiece=p;
+    var bb=document.getElementById('det-bid-btn');if(bb)bb.classList.add('active');
+    document.getElementById('det-os').href=p.os||'#';
+    detScale=1;detPanX=0;detPanY=0;detTx();
+    document.getElementById('det-zoom').value=100;document.getElementById('det-zlbl').textContent='100%';
+    var ifr=document.getElementById('det-iframe');
+    if(detCache[p.id]){ifr.srcdoc=detCache[p.id];}
+    else{
+      var src=document.querySelector('#fr-'+p.id+' iframe');
+      if(src&&src.srcdoc){detCache[p.id]=src.srcdoc;ifr.srcdoc=src.srcdoc;}
+      else{ifr.srcdoc='<html><body style="background:#000;width:100%;height:100%;display:flex;align-items:center;justify-content:center;margin:0"><span style="color:#1a1a1a;font-family:monospace;font-size:11px;letter-spacing:3px">resolving...<\/span><\/body><\/html>';}
+    }
+    // load manifold widget
+    var _wEl=document.getElementById('det-manifold-widget');
+    var _nEl=document.getElementById('det-listing-none');
+    var _lid=LISTINGS[p.id];
+    if(_wEl) _wEl.innerHTML='';
+    if(_lid){
+      if(_nEl) _nEl.style.display='none';
+      if(_wEl){
+        _wEl.style.display='block';
+        var _wd=document.createElement('div');
+        _wd.setAttribute('data-widget','m-layout-complete-listing');
+        _wd.setAttribute('data-id',_lid);
+        _wd.setAttribute('data-network','1');
+        _wEl.appendChild(_wd);
+        setTimeout(function(){
+          if(window.manifold&&window.manifold.widgets) window.manifold.widgets.refresh();
+        },500);
+      }
+    } else {
+      if(_wEl) _wEl.style.display='none';
+      if(_nEl) _nEl.style.display='block';
+    }
+    var det=document.getElementById('detail');det.style.display='block';
+    setTimeout(function(){det.style.transition='opacity .75s ease';det.style.opacity='1';},20);
+    detOpen=true;
+  },650);
+}
+function closeDetail(){
+  var det=document.getElementById('detail');det.style.transition='opacity .5s ease';det.style.opacity='0';
+  setTimeout(function(){
+    det.style.display='none';
+    var bb=document.getElementById('det-bid-btn'); if(bb) bb.classList.remove('active');
+    var col=document.getElementById('col');col.style.display='block';
+    setTimeout(function(){col.style.transition='opacity .6s ease';col.style.opacity='1';},20);
+    detOpen=false;
+  },520);
+}
+var _dv=document.getElementById('det-viewer');
+_dv.addEventListener('mousedown',function(e){if(e.target.tagName==='INPUT')return;detDrag=true;detDragSX=e.clientX-detPanX;detDragSY=e.clientY-detPanY;});
+window.addEventListener('mousemove',function(e){
+  if(!detDrag) return;
+  var wrap=document.getElementById('det-iframe-wrap');
+  var maxPan=wrap ? (wrap.offsetWidth*(detScale-1))/2 : 200;
+  detPanX=Math.max(-maxPan,Math.min(maxPan,e.clientX-detDragSX));
+  detPanY=Math.max(-maxPan,Math.min(maxPan,e.clientY-detDragSY));
+  detTx();
+});
+window.addEventListener('mouseup',function(){detDrag=false;});
+_dv.addEventListener('wheel',function(e){e.preventDefault();var v=Math.min(666,Math.max(100,Math.round(detScale*100)+(e.deltaY>0?-8:8)));detScale=v/100;document.getElementById('det-zoom').value=v;document.getElementById('det-zlbl').textContent=v+'%';detTx();},{passive:false});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&detOpen)closeDetail();});
+
+// ── BID NOW ──────────────────────────────────────────────────────────
+var _currentPiece = null;
+function detBidNow(){
+  if(!_currentPiece) return;
+  var lid = LISTINGS[_currentPiece.id];
+  if(lid){
+    // open manifold listing directly for bidding
+    var url = 'https://manifold.xyz/@vstrvl/id/'+lid;
+    window.open(url,'_blank');
+  } else if(_currentPiece.link){
+    window.open(_currentPiece.link,'_blank');
+  }
+}
+
+</script>
+<div id="vstrvl-credit">vstrvl 2026</div>
+</html>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OBLIVION</title>
 <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=MedievalSharp&family=UnifrakturMaguntia&family=Pixelify+Sans&family=Jacquard+24&display=swap" rel="stylesheet">
